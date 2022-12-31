@@ -32,7 +32,7 @@ const Register = ({navigation, route}) => {
     return <View style={style.box}>
         <Avatar.Image 
         style={style.avatar}
-        size={150} source={require('../assets/img/list.png')} />
+        size={150} source={require('../assets/img/icone.png')} />
         
         <TextInput
         style={style.input}

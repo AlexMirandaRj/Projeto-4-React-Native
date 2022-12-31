@@ -1,70 +1,120 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { FAB, Button, TextInput, Avatar, Card } from 'react-native-paper';
-import { updateProfile } from '../services/user';
-const Profile = () => {
-        const [email, setEmail] = useState("");
-        const [name, setName] = useState("");
-        const [username, setUsername] = useState("");
-        const [image, setImage] = useState("");
+import { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Dimensions, TouchableOpacity } from 'react-native';
+import { FAB, Button, TextInput, Avatar, Card, Snackbar } from 'react-native-paper';
+import { getUser, _updateProfile, getFile } from '../services/user';
+import { useTheme } from 'react-native-paper';
+import { logout } from '../services/auth';
+import { pickImage } from '../services/image';
+ 
+const Profile = ({ route }) => {
+    const theme = useTheme();
+
+    const [snackBarShow, setSnackBarShow] = useState(false);
+    const [messageSnack, setMessageSnack] = useState("");
+    
+    const [email, setEmail] = useState("");
+    const [displayName, setDisplayName] = useState("");
+    const [photoURL, setPhotoURL] = useState("");
+    const [photoURLShow, setPhotoURLShow] = useState("");
+    
+    const loadUser = async () => {
+        const user = await getUser();
+        setEmail(user.email)
+        setDisplayName(user.displayName)
+        if(user.photoURL){
+            try{
+                setPhotoURLShow(await getFile(route.params.firebaseApp, user.photoURL))
+            }catch(err){
+
+            }
+        }
+    }
+
+    const uploadPhoto = async () => {
+        const image = await pickImage();
+        setPhotoURL(image);
+        setPhotoURLShow(image);
+    }
+        useEffect(() => {
+            loadUser();
+        }, []);
         
-        return <View style={style.box}>
-           <Card style={style.card}>
-           <Avatar.Image 
-            style={style.avatar}
-            size={150} source={'https://media.licdn.com/dms/image/D4D03AQFb4-b9S0puJQ/profile-displayphoto-shrink_800_800/0/1667798048783?e=2147483647&v=beta&t=10QuReQzmBtA9QX7FYDX8ePXQquOMjxj77Y9kzAshSo'} />
-            
-            <FAB 
-            icon="camera" 
-            style={{
-                ...style.fab,
-                left:'-12.5%'
-            }} 
-            onPress={() => console.log('Pressed')}
+        return <View style={{
+            ...style.box,
+            backgroundColor: theme.colors.bodyBackground
+        }}>
+
+        <Card style={style.card}>
+            <Avatar.Image 
+                style={style.avatar}
+                size={150} source={{ uri: photoURLShow ? photoURLShow : require('../assets/user.png')}} />
+            {}
+            <FAB
+                icon="image"
+                style={{
+                    ...style.fab,
+                    right: '-12.5%'
+                }}
+                onPress={uploadPhoto}
             />
-            <FAB 
-            icon="folder-image" 
-            style={{
-                ...style.fab,
-                right:'-12.5%'
-            }} 
-            onPress={() => console.log('Pressed')}
-            />
-           </Card>
-            
-            <TextInput
+        </Card>
+        <TextInput
             style={style.input}
             mode="outlined"
             label="E-mail"
             value={email}
             onChangeText={text => setEmail(text)}
-            />
-             <TextInput
-            style={style.input}
-            mode="outlined"
-            label="Usuário"
-            value={username}
-            onChangeText={text => setUsername(text)}
-            />
-            <TextInput
+        />
+        <TextInput
             style={style.input}
             mode="outlined"
             label="Nome"
-            value={name}
-            onChangeText={text => setName(text)}
-            />
-            <Button style={style.button} mode="contained" color="primary" onPress={() => updateProfile({})}>Atualizar Perfil</Button>
-            </View>
+            value={displayName}
+            onChangeText={text => setDisplayName(text)}
+        />
+        <Button style={style.button} mode="contained" color="primary" onPress={async () => {
+            try{
+                await _updateProfile(route.params.firebaseApp, {
+                    email,
+                    displayName,
+                    photoURL
+                })
+                setMessageSnack("Perfil atualizado")
+            }catch(err){
+                setMessageSnack("Erro atualizando perfil")
+            }
+            setSnackBarShow(true)
+        }}>Atualizar perfil</Button>
+        <Button style={{
+            ...style.button,
+            backgroundColor: theme.colors.error
+        }} mode="contained" color="error" onPress={async () => {
+            await logout()
+            route.params.setUserLoggedIn(false);
+        }}>Sair</Button>
+
+        <Snackbar
+            visible={snackBarShow}
+            duration={3000}>
+            {messageSnack}
+        </Snackbar>
+    </View>
 }
 const style = StyleSheet.create({
+    camera: {
+        position: 'absolute',
+        backgroundColor: "#33"
+    },
     fab: {
         position: 'absolute',
         margin: 0,
         bottom: 0,
         borderRadius: '100%'
+        
     },
     card: {
-         boxShadow:'none'
+         boxShadow:'none',
+         backgroundColor: 'transparent'
     },
         
     avatar: {
@@ -81,7 +131,8 @@ const style = StyleSheet.create({
         justifyContent:'center',
         width: '100%',
         height: '100%',
-        alignItems: 'center'
+        alignItems: 'center',
+        backgroundColor: 'purple'
     },
     input: {
         width: '100%'
